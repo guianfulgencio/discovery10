@@ -1,0 +1,257 @@
+###################################################################################
+#################### Configure Network Parameters Using Puppet #################### 
+###################################################################################
+
+********************************************
+****************** Task 1 ****************** 
+********************************************
+** Step 1 **
+ssh root@192.168.0.20 -p 20000
+ssh root@192.168.0.20 -p 20001
+ssh root@192.168.0.20 -p 20002
+
+** Step 2 **
+service puppetserver status
+
+** Step 3 **
+puppet agent -t
+
+** Step 4 **
+puppet agent -t
+
+** Step 5 **
+puppet agent -t
+
+** Step 6 **
+puppetserver ca list --all
+
+** Step 7 **
+puppet config set --section agent runinterval 120
+
+** Step 7 **
+puppet config set --section agent runinterval 120
+
+** Step 8 **
+cat /etc/puppetlabs/puppet/puppet.conf
+
+** Step 9 **
+puppet agent
+
+** Step 9 **
+puppet agent
+
+** Step 10 **
+cat /var/log/puppetlabs/puppetserver/puppetserver.log
+
+********************************************
+****************** Task 2 ****************** 
+********************************************
+** Step 1 **
+cd /etc/puppetlabs/code/environments/production/manifests
+touch site.pp
+
+** Step 2 **
+#!/bin/bash
+
+IF_NAME=<%= @if_name %>
+IP_ADDRESS=<%= @ip_address %>
+LOCAL_IP=<%= @local_ip %>
+REMOTE_IP=<%= @remote_ip %>
+
+echo "Check if an interface with the correct IP address exists."
+ip address show dev $IF_NAME | grep $IP_ADDRESS
+if [[ $? -eq 0 ]]; then
+  echo "The interface with the correct IP address exists."
+  exit 0
+fi
+
+echo "Check if the interface exits."
+ip address show dev $IF_NAME
+if [[ $? -eq 0 ]]; then
+  echo "The interface exists, deleting the interface."
+  ip link delete dev $IF_NAME
+fi
+
+echo "Applying the new configuration."
+ip link add name $IF_NAME type ipip local $LOCAL_IP remote $REMOTE_IP
+ip link set $IF_NAME up
+ip addr add $IP_ADDRESS dev $IF_NAME
+
+** Step 3 **
+class configure_interface (String $if_name, String $ip_address, String $local_ip, String $remote_ip) {
+
+  file { 'interface_config_file':
+    path => "/root/network-script.sh",
+    content => template("$settings::manifest/network-interface.tmpl"),
+    ensure => present,
+    mode => "744",
+  }
+
+}
+
+** Step 4 **
+$if_name = "ipip1"
+$server01_ip_address = "192.168.1.1/24"
+$server01_global_ip = "172.20.0.21"
+$server02_ip_address = "192.168.2.1/24"
+$server02_global_ip = "172.20.0.22"
+
+** Step 5 **
+node 'server01' {
+
+  class { 'configure_interface':
+    if_name => "$if_name",
+    ip_address => "$server01_ip_address",
+    local_ip => "$server01_global_ip",
+    remote_ip => "$server02_global_ip",
+  }
+
+}
+
+** Step 6 **
+puppet agent -t
+
+
+** Step 7 **
+cat /root/network-script.sh
+
+** Step 8 **
+node 'server02' {
+
+  class { 'configure_interface':
+    if_name => "$if_name",
+    ip_address => "$server02_ip_address",
+    local_ip => "$server02_global_ip",
+    remote_ip => "$server01_global_ip",
+  }
+
+}
+
+** Step 9 **
+  exec { 'execute_script':
+    command => '/root/network-script.sh > /root/network-script.log',
+    require => File['interface_config_file'],
+  }
+
+** Step 10 **
+cat network-script.log
+
+** Step 11 **
+ip addr show dev ipip1
+
+** Step 12 **
+$if_name = "ipip1"
+$server01_ip_address = "192.168.254.1/24"
+$server01_global_ip = "172.20.0.21"
+$server02_ip_address = "192.168.2.1/24"
+$server02_global_ip = "172.20.0.22"
+
+** Step 13 **
+ip addr show dev ipip1
+
+** Step 14 **
+$if_name = "ipip1"
+$server01_ip_address = "192.168.1.1/24"
+$server01_global_ip = "172.20.0.21"
+$server02_ip_address = "192.168.2.1/24"
+$server02_global_ip = "172.20.0.22"
+
+** Step 15 **
+ip addr show dev ipip1
+p addr del 192.168.1.1/24 dev ipip1
+p addr add 192.168.254.1/24 dev ipip1
+p addr show dev ipip1
+
+** Step 16 **
+ip addr show dev ipip1
+
+** Step 17 **
+class configure_route (String $subnet, String $if_name) {
+
+  exec { 'add_route':
+    command => "/sbin/ip route replace $subnet dev $if_name"
+  }
+
+}
+
+** Step 18 **
+$if_name = "ipip1"
+$server01_ip_address = "192.168.1.1/24"
+$server01_global_ip = "172.20.0.21"
+$server01_subnet = "192.168.1.0/24"
+$server02_ip_address = "192.168.2.1/24"
+$server02_global_ip = "172.20.0.22"
+$server02_subnet = "192.168.2.0/24"
+
+** Step 19 **
+node 'server01' {
+
+  class { 'configure_route':
+    subnet => "$server02_subnet",
+    if_name => "$if_name",
+  }
+
+}
+
+node 'server02' {
+
+  class { 'configure_route':
+    subnet => "$server01_subnet",
+    if_name => "$if_name",
+  }
+
+}
+
+** Step 20 **
+route -n
+
+
+** Step 21 **
+ping -c 5 192.168.2.1
+
+********************************************
+****************** Task 3 ****************** 
+********************************************
+** Step 1 **
+puppet module install puppetlabs-ntp
+
+** Step 2 **
+puppet module list
+
+** Step 3 **
+$if_name = "ipip1"
+$server01_ip_address = "192.168.1.1/24"
+$server01_global_ip = "172.20.0.21"
+$server01_subnet = "192.168.1.0/24"
+$server02_ip_address = "192.168.2.1/24"
+$server02_global_ip = "172.20.0.22"
+$server02_subnet = "192.168.2.0/24"
+$ntp_servers = [
+  "0.north-america.pool.ntp.org",
+  "1.north-america.pool.ntp.org",
+  "2.north-america.pool.ntp.org",
+  "3.north-america.pool.ntp.org",
+]
+
+** Step 4 **
+node 'server01' {
+
+  class { 'ntp':
+    servers => $ntp_servers,
+  }
+
+}
+
+node 'server02' {
+
+  class { 'ntp':
+    servers => $ntp_servers,
+  }
+
+}
+
+** Step 5 **
+service ntp status
+
+** Step 6 **
+cat /etc/ntp.conf
